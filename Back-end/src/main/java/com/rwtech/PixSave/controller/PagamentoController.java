@@ -1,5 +1,7 @@
 package com.rwtech.PixSave.controller;
 
+import com.rwtech.PixSave.entity.Pagamento;
+import com.rwtech.PixSave.service.PagamentoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;

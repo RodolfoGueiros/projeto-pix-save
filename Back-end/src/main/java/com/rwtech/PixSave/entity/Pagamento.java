@@ -1,6 +1,7 @@
 package com.rwtech.PixSave.entity;
+import jakarta.persistence.*;
 import lombok.Data;
-import javax.persistence.*;
+//import javax.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
