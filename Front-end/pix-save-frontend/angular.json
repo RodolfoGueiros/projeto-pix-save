@@ -37,6 +37,9 @@
             ],
             "scripts": [],
             "server": "src/main.server.ts",
+			"options":{
+				"proxyConfig": "proxy.conf.json"
+			}
             "prerender": true,
             "ssr": {
               "entry": "server.ts"
