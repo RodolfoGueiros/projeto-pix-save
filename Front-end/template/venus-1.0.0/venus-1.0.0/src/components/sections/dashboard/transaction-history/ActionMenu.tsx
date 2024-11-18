@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
@@ -12,6 +12,10 @@ interface Action {
   id: number;
   icon: string;
   title: string;
+}
+
+interface ActionMenuProps {
+  onRemove: () => void;
 }
 
 const actions: Action[] = [
@@ -32,26 +36,27 @@ const actions: Action[] = [
   },
 ];
 
-const ActionMenu = () => {
+const ActionMenu: React.FC<ActionMenuProps> = ({ onRemove }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
-  const handleActionButtonClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleActionMenuOpen = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
   const handleActionMenuClose = () => {
     setAnchorEl(null);
   };
-
-  const handleActionItemClick = () => {
+  
+  const handleRemoveClick = () => {
+    onRemove();
     handleActionMenuClose();
   };
 
   return (
     <Box pr={2}>
       <IconButton
-        onClick={handleActionButtonClick}
+        onClick={handleActionMenuOpen}
         sx={{ p: 0.75, border: 'none', bgcolor: 'transparent !important' }}
         size="medium"
       >
@@ -62,7 +67,6 @@ const ActionMenu = () => {
         id="account-menu"
         open={open}
         onClose={handleActionMenuClose}
-        onClick={handleActionMenuClose}
         sx={{
           mt: 0.5,
           '& .MuiList-root': {
@@ -72,23 +76,26 @@ const ActionMenu = () => {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {actions.map((actionItem) => {
-          return (
-            <MenuItem key={actionItem.id} onClick={handleActionItemClick}>
-              <ListItemIcon sx={{ mr: 1, fontSize: 'h5.fontSize' }}>
-                <IconifyIcon
-                  icon={actionItem.icon}
-                  color={actionItem.id === 3 ? 'error.main' : 'text.primary'}
-                />
-              </ListItemIcon>
-              <ListItemText>
-                <Typography color={actionItem.id === 3 ? 'error.main' : 'text.primary'}>
-                  {actionItem.title}
-                </Typography>
-              </ListItemText>
-            </MenuItem>
-          );
-        })}
+        {actions.map((actionItem) => (
+          <MenuItem
+            key={actionItem.id}
+            onClick={
+              actionItem.id === 3 ? handleRemoveClick : handleActionMenuClose
+            }
+          >
+            <ListItemIcon sx={{ mr: 1, fontSize: 'h5.fontSize' }}>
+              <IconifyIcon
+                icon={actionItem.icon}
+                color={actionItem.id === 3 ? 'error.main' : 'text.primary'}
+              />
+            </ListItemIcon>
+            <ListItemText>
+              <Typography color={actionItem.id === 3 ? 'error.main' : 'text.primary'}>
+                {actionItem.title}
+              </Typography>
+            </ListItemText>
+          </MenuItem>
+        ))}
       </Menu>
     </Box>
   );

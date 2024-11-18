@@ -1,148 +1,138 @@
-import { useEffect } from 'react';
-import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
-import { DataGrid, GridColDef, useGridApiRef, GridApi } from '@mui/x-data-grid';
-import DataGridFooter from 'components/common/DataGridFooter';
-import { rows } from 'data/transactionHistory';
+import { DataGrid, GridColDef, GridRowId, GridRowSelectionModel } from '@mui/x-data-grid';
 import { Typography } from '@mui/material';
 import ActionMenu from './ActionMenu';
 
-const columns: GridColDef<(typeof rows)[number]>[] = [
-  {
-    field: 'id',
-    headerName: 'Transaction Id',
-    editable: false,
-    align: 'left',
-    flex: 2,
-    minWidth: 160,
-    renderHeader: () => (
-      <Typography variant="body2" fontWeight={600} ml={1}>
-        Transaction Id
-      </Typography>
-    ),
-    renderCell: (params) => (
-      <Stack ml={1} height={1} direction="column" alignSelf="center" justifyContent="center">
-        <Typography variant="body2" fontWeight={500}>
-          {params.value}
-        </Typography>
-      </Stack>
-    ),
-  },
-  {
-    field: 'category',
-    headerName: 'Category',
-    editable: false,
-    align: 'left',
-    flex: 2,
-    minWidth: 140,
-  },
-  {
-    field: 'date',
-    headerName: 'Date',
-    editable: false,
-    align: 'left',
-    flex: 2,
-    minWidth: 160,
-  },
-  {
-    field: 'amount',
-    headerName: 'Amount',
-    editable: false,
-    align: 'left',
-    flex: 2,
-    minWidth: 120,
-  },
-  {
-    field: 'paymentMethod',
-    headerName: 'Payment Method',
-    editable: false,
-    align: 'left',
-    flex: 2,
-    minWidth: 150,
-  },
-  {
-    field: 'status',
-    headerName: 'Status',
-    headerAlign: 'center',
-    editable: false,
-    flex: 1,
-    minWidth: 140,
-    renderCell: (params) => {
-      const color =
-        params.value === 'Pending'
-          ? 'warning'
-          : params.value === 'Completed'
-            ? 'success'
-            : params.value === 'Failed'
-              ? 'error'
-              : 'info';
-      return (
-        <Stack direction="column" alignItems="center" justifyContent="center" height={1}>
-          <Chip label={params.value} size="small" color={color} />
-        </Stack>
-      );
-    },
-  },
-  {
-    field: 'balance',
-    headerName: 'Balance',
-    headerAlign: 'right',
-    align: 'right',
-    editable: false,
-    flex: 1,
-    minWidth: 100,
-  },
-  {
-    field: 'action',
-    headerAlign: 'right',
-    align: 'right',
-    editable: false,
-    sortable: false,
-    flex: 1,
-    minWidth: 100,
-    renderHeader: () => <ActionMenu />,
-    renderCell: () => <ActionMenu />,
-  },
-];
-
-interface TaskOverviewTableProps {
-  searchText: string;
+interface Transaction {
+  id: number;
+  nomePagador: string;
+  nomeBanco: string;
+  data: string;
+  hora: string;
+  valor: number;
 }
 
-const TransactionHistoryTable = ({ searchText }: TaskOverviewTableProps) => {
-  const apiRef = useGridApiRef<GridApi>();
 
-  useEffect(() => {
-    apiRef.current.setQuickFilterValues(searchText.split(/\b\W+\b/).filter((word) => word !== ''));
-  }, [searchText]);
+
+interface TransactionHistoryTableProps {
+  searchText: string;
+  transactions: Transaction[];
+  onDelete: () => void;
+  onSelectionChange: (ids: GridRowId[]) => void;
+}
+
+const TransactionHistoryTable = ({ 
+  searchText,
+  transactions, 
+  onDelete, 
+  onSelectionChange 
+}: TransactionHistoryTableProps) => {
+  const columns: GridColDef[] = [
+    {
+      field: 'id',
+      headerName: 'Id',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 30,
+      maxWidth: 90,
+      renderHeader: () => (
+        <Typography variant="body2" fontWeight={600} ml={1}>
+          Id
+        </Typography>
+      ),
+      renderCell: (params) => (
+        <Stack ml={1} height={1} direction="column" alignSelf="center" justifyContent="center">
+          <Typography variant="body2" fontWeight={500}>
+            {params.value}
+          </Typography>
+        </Stack>
+      ),
+    },
+    {
+      field: 'nomeBanco',
+      headerName: 'Banco',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 100,
+    },
+    {
+      field: 'nomePagador',
+      headerName: 'Pagador',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 150,
+    },
+    {
+      field: 'valor',
+      headerName: 'Valor',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 130,
+    },
+    {
+      field: 'data',
+      headerName: 'Data',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 120,
+    },
+    {
+      field: 'hora',
+      headerName: 'Hora',
+      editable: false,
+      align: 'left',
+      flex: 2,
+      minWidth: 120,
+    },
+    {
+      field: 'action',
+      headerAlign: 'right',
+      align: 'right',
+      editable: false,
+      sortable: false,
+      flex: 1,
+      minWidth: 100,
+      renderHeader: () => <ActionMenu onRemove={onDelete} />,
+      renderCell: () => <ActionMenu onRemove={onDelete} />,
+    },
+  ];
+  
+  const handleSelectionChange = (rowSelectionModel: GridRowSelectionModel) => {
+    // Convertendo rowSelectionModel para GridRowId[] e passando para onSelectionChange
+    onSelectionChange(Array.from(rowSelectionModel));
+  };
 
   return (
     <DataGrid
-      apiRef={apiRef}
-      density="standard"
       columns={columns}
-      rows={rows}
+      rows={transactions}
+      filterModel={{
+        items: [
+          {
+            field: "nomePagador",
+            operator: 'contains',
+            value: searchText,
+          },
+        ],
+      }}
+      onRowSelectionModelChange={handleSelectionChange}/* {ids: GridRowId[] => onSelectionChange(ids)} */
       rowHeight={52}
       disableColumnResize
       disableColumnMenu
       disableColumnSelector
       disableRowSelectionOnClick
       initialState={{
-        pagination: { paginationModel: { pageSize: 4 } },
-      }}
-      autosizeOptions={{
-        includeOutliers: true,
-        includeHeaders: false,
-        outliersFactor: 1,
-        expand: true,
-      }}
-      slots={{
-        pagination: DataGridFooter,
+        pagination: { paginationModel: { pageSize: 5 } },
       }}
       checkboxSelection
       pageSizeOptions={[5]}
     />
-  );
+  );  
 };
 
 export default TransactionHistoryTable;
