@@ -1,3 +1,4 @@
+// src/pages/Index.tsx
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,9 +6,10 @@ import { Search, Upload } from "lucide-react";
 import { TransactionTable } from "@/components/TransactionTable";
 import { UploadModal } from "@/components/UploadModal";
 import { FilterPanel } from "@/components/FilterPanel";
-import { Pagamento, PaginatedResponse } from "@/types/pagamento";
+import { Pagamento } from "@/types/pagamento";
 import { FilterState, FilterOptions } from "@/types/filters";
 import { toast } from "sonner";
+import { pagamentoAPI } from "@/services/api";
 
 const Index = () => {
   const [transactions, setTransactions] = useState<Pagamento[]>([]);
@@ -15,11 +17,9 @@ const Index = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Pagination state
+  // Pagination state (simulada no frontend já que backend não tem)
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
   
   // Filter state
   const [filters, setFilters] = useState<FilterState>({ status: 'all' });
@@ -32,83 +32,113 @@ const Index = () => {
   const fetchTransactions = async () => {
     setIsLoading(true);
     try {
-      // Build query parameters
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        size: pageSize.toString(),
+      const data = await pagamentoAPI.listarPagamentos();
+      setTransactions(data);
+      
+      // Extrair opções de filtro dos dados
+      const bancos = [...new Set(data.map(t => t.banco).filter(Boolean))] as string[];
+      const categorias = [...new Set(data.map(t => t.category))];
+      const metodosPagamento = [...new Set(data.map(t => t.paymentMethod))];
+      
+      setFilterOptions({
+        bancos,
+        categorias,
+        metodosPagamento,
       });
       
-      // Add filter parameters
-      if (filters.dataInicio) params.append('dataInicio', filters.dataInicio);
-      if (filters.dataFim) params.append('dataFim', filters.dataFim);
-      if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-      if (filters.valorMinimo) params.append('valorMinimo', filters.valorMinimo.toString());
-      if (filters.valorMaximo) params.append('valorMaximo', filters.valorMaximo.toString());
-      if (filters.banco && filters.banco.length > 0) params.append('banco', filters.banco[0]);
-      if (filters.categoria && filters.categoria.length > 0) params.append('categoria', filters.categoria[0]);
-      if (filters.metodoPagamento && filters.metodoPagamento.length > 0) params.append('metodoPagamento', filters.metodoPagamento[0]);
-      
-      const response = await fetch(`http://localhost:8080/api/pagamentos?${params.toString()}`);
-      if (response.ok) {
-        const data: PaginatedResponse<Pagamento> = await response.json();
-        setTransactions(data.content);
-        setTotalPages(data.totalPages);
-        setTotalElements(data.totalElements);
-      } else {
-        toast.error("Erro ao carregar transações");
-      }
+      toast.success("Transações carregadas com sucesso!");
     } catch (error) {
-      toast.error("Erro ao conectar com o servidor");
+      toast.error("Erro ao carregar transações");
       console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const fetchFilterOptions = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/api/pagamentos");
-      if (response.ok) {
-        const data = await response.json();
-        const allTransactions = Array.isArray(data) ? data : data.content || [];
-        
-        const bancos = [...new Set(allTransactions.map((t: Pagamento) => t.banco).filter(Boolean))];
-        const categorias = [...new Set(allTransactions.map((t: Pagamento) => t.category))];
-        const metodosPagamento = [...new Set(allTransactions.map((t: Pagamento) => t.paymentMethod))];
-        
-        setFilterOptions({
-          bancos: bancos as string[],
-          categorias: categorias as string[],
-          metodosPagamento: metodosPagamento as string[],
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching filter options:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchFilterOptions();
-  }, []);
-
   useEffect(() => {
     fetchTransactions();
-  }, [currentPage, filters]);
+  }, []);
 
+  // Aplicar filtros
+  const filteredByFilters = useMemo(() => {
+    let result = [...transactions];
+
+    // Filtro por status
+    if (filters.status && filters.status !== 'all') {
+      result = result.filter(t => 
+        filters.status === 'completed' ? t.status === 'Completed' : t.status === 'Pending'
+      );
+    }
+
+    // Filtro por banco
+    if (filters.banco && filters.banco.length > 0) {
+      result = result.filter(t => filters.banco?.includes(t.banco || ''));
+    }
+
+    // Filtro por categoria
+    if (filters.categoria && filters.categoria.length > 0) {
+      result = result.filter(t => filters.categoria?.includes(t.category));
+    }
+
+    // Filtro por método de pagamento
+    if (filters.metodoPagamento && filters.metodoPagamento.length > 0) {
+      result = result.filter(t => filters.metodoPagamento?.includes(t.paymentMethod));
+    }
+
+    // Filtro por data
+    if (filters.dataInicio) {
+      const dataInicio = new Date(filters.dataInicio);
+      result = result.filter(t => {
+        const [dia, mes, ano] = t.date.split('/');
+        const dataTransacao = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+        return dataTransacao >= dataInicio;
+      });
+    }
+
+    if (filters.dataFim) {
+      const dataFim = new Date(filters.dataFim);
+      result = result.filter(t => {
+        const [dia, mes, ano] = t.date.split('/');
+        const dataTransacao = new Date(parseInt(ano), parseInt(mes) - 1, parseInt(dia));
+        return dataTransacao <= dataFim;
+      });
+    }
+
+    // Filtro por valor
+    if (filters.valorMinimo) {
+      result = result.filter(t => t.amount >= filters.valorMinimo!);
+    }
+
+    if (filters.valorMaximo) {
+      result = result.filter(t => t.amount <= filters.valorMaximo!);
+    }
+
+    return result;
+  }, [transactions, filters]);
+
+  // Aplicar busca
   const filteredTransactions = useMemo(() => {
-    if (!searchTerm) return transactions;
+    if (!searchTerm) return filteredByFilters;
     
-    return transactions.filter(
+    return filteredByFilters.filter(
       (transaction) =>
         transaction.transactionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
         transaction.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase())
+        transaction.paymentMethod.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (transaction.banco && transaction.banco.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [searchTerm, transactions]);
+  }, [searchTerm, filteredByFilters]);
+
+  // Paginação no frontend
+  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
+  const paginatedTransactions = filteredTransactions.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize
+  );
 
   const handleFiltersChange = (newFilters: FilterState) => {
     setFilters(newFilters);
-    setCurrentPage(0); // Reset to first page when filters change
+    setCurrentPage(0);
   };
 
   const handlePageChange = (page: number) => {
@@ -154,20 +184,20 @@ const Index = () => {
             <div className="flex items-center justify-center py-12">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
-          ) : filteredTransactions.length > 0 ? (
+          ) : paginatedTransactions.length > 0 ? (
             <TransactionTable
-              transactions={filteredTransactions}
+              transactions={paginatedTransactions}
               currentPage={currentPage}
               totalPages={totalPages}
-              totalElements={totalElements}
+              totalElements={filteredTransactions.length}
               pageSize={pageSize}
               onPageChange={handlePageChange}
             />
           ) : (
             <div className="rounded-lg border border-border bg-card p-12 text-center">
               <p className="text-muted-foreground">
-                {searchTerm
-                  ? "Nenhuma transação encontrada"
+                {searchTerm || Object.keys(filters).some(key => filters[key as keyof FilterState] && filters[key as keyof FilterState] !== 'all')
+                  ? "Nenhuma transação encontrada com os filtros aplicados"
                   : "Nenhuma transação disponível"}
               </p>
             </div>

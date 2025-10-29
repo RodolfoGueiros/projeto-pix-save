@@ -7,6 +7,8 @@ import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,8 +44,11 @@ public class PagamentoService {
         return pagamentoRepository.save(pagamento);
     }
 
-    public List<Pagamento> listarPagamentos() {
+    /* public List<Pagamento> listarPagamentos() {
         return pagamentoRepository.findAll();
+    }*/
+    public Page<Pagamento> listarPagamentosPaginados(Pageable pageable) {
+        return pagamentoRepository.findAll(pageable);
     }
 
     // Novo método para buscar pagamento por ID
@@ -166,4 +171,5 @@ public class PagamentoService {
 
         return pagamento;
     }
+
 }

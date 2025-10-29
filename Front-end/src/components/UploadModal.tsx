@@ -1,3 +1,4 @@
+// src/components/UploadModal.tsx
 import { useState } from "react";
 import {
   Dialog,
@@ -6,18 +7,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Upload } from "lucide-react";
+import { Upload, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { pagamentoAPI } from "@/services/api";
 
 interface UploadModalProps {
   open: boolean;
@@ -25,23 +20,30 @@ interface UploadModalProps {
   onUploadSuccess: () => void;
 }
 
-const bancos = [
-  "Banco do Brasil",
-  "Bradesco",
-  "Itaú",
-  "Santander",
-  "Caixa Econômica Federal",
-  "Nubank",
-  "Inter",
-  "C6 Bank",
-  "BTG Pactual",
-  "Sicoob",
-];
-
 export const UploadModal = ({ open, onOpenChange, onUploadSuccess }: UploadModalProps) => {
-  const [selectedBank, setSelectedBank] = useState<string>("");
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      // Validar tipo de arquivo
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+      if (!validTypes.includes(selectedFile.type)) {
+        toast.error("Formato de arquivo não suportado. Use PDF, JPG ou PNG.");
+        return;
+      }
+      
+      // Validar tamanho (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (selectedFile.size > maxSize) {
+        toast.error("Arquivo muito grande. Tamanho máximo: 10MB");
+        return;
+      }
+      
+      setFile(selectedFile);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!file) {
@@ -49,88 +51,114 @@ export const UploadModal = ({ open, onOpenChange, onUploadSuccess }: UploadModal
       return;
     }
 
-    if (!selectedBank) {
-      toast.error("Por favor, selecione um banco");
-      return;
-    }
-
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("banco", selectedBank);
-
+    
     try {
-      const response = await fetch("http://localhost:8080/api/pagamentos/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        toast.success("Comprovante enviado com sucesso!");
-        onOpenChange(false);
-        onUploadSuccess();
-        setFile(null);
-        setSelectedBank("");
-      } else {
-        toast.error("Erro ao enviar comprovante");
-      }
+      const response = await pagamentoAPI.uploadComprovante(file);
+      
+      toast.success(
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4" />
+          <span>{response}</span>
+        </div>
+      );
+      
+      // Limpar e fechar modal
+      setFile(null);
+      onOpenChange(false);
+      
+      // Recarregar lista de transações
+      onUploadSuccess();
     } catch (error) {
-      toast.error("Erro ao conectar com o servidor");
       console.error("Upload error:", error);
+      toast.error("Erro ao processar comprovante. Verifique o formato do arquivo.");
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleClose = () => {
+    if (!isUploading) {
+      setFile(null);
+      onOpenChange(false);
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Insira o comprovante</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">Insira o comprovante PIX</DialogTitle>
         </DialogHeader>
+        
         <div className="space-y-6 py-4">
           <div className="space-y-2">
-            <Label htmlFor="bank">Banco</Label>
-            <Select value={selectedBank} onValueChange={setSelectedBank}>
-              <SelectTrigger id="bank">
-                <SelectValue placeholder="Selecione o banco" />
-              </SelectTrigger>
-              <SelectContent>
-                {bancos.map((banco) => (
-                  <SelectItem key={banco} value={banco}>
-                    {banco}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="file">Arquivo</Label>
-            <div className="flex items-center gap-2">
+            <Label htmlFor="file">Arquivo do Comprovante</Label>
+            <div className="space-y-3">
               <Input
                 id="file"
                 type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                accept="image/*,.pdf"
+                onChange={handleFileChange}
+                accept="image/jpeg,image/jpg,image/png,application/pdf"
                 className="cursor-pointer"
+                disabled={isUploading}
               />
-            </div>
-            {file && (
-              <p className="text-sm text-muted-foreground">
-                Arquivo selecionado: {file.name}
+              
+              {file && (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(file.size / 1024).toFixed(2)} KB
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-xs text-muted-foreground">
+                Formatos aceitos: PDF, JPG, PNG (máx. 10MB)
               </p>
-            )}
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 border border-blue-200 dark:border-blue-800">
+            <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              💡 Dica
+            </h4>
+            <p className="text-xs text-blue-800 dark:text-blue-200">
+              O sistema irá extrair automaticamente as informações do comprovante:
+              Nome do pagador, Banco, Valor, Data e Hora.
+            </p>
           </div>
         </div>
-        <DialogFooter>
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClose}
+            disabled={isUploading}
+          >
+            Cancelar
+          </Button>
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={isUploading || !file || !selectedBank}
-            className="w-full"
+            disabled={isUploading || !file}
+            className="gap-2"
           >
-            <Upload className="mr-2 h-4 w-4" />
-            {isUploading ? "Enviando..." : "Enviar"}
+            {isUploading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <span>Processando...</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4" />
+                <span>Enviar e Processar</span>
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

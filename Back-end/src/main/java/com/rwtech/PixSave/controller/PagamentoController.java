@@ -3,6 +3,10 @@ package com.rwtech.PixSave.controller;
 import com.rwtech.PixSave.entity.Pagamento;
 import com.rwtech.PixSave.service.PagamentoService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,9 +29,17 @@ public class PagamentoController {
     }
 
     @GetMapping
-    public List<Pagamento> listarPagamentos() {
-        return pagamentoService.listarPagamentos();
+    public Page<Pagamento> listarPagamentos(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy
+    ) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
+        return pagamentoService.listarPagamentosPaginados(pageable);
     }
+    /*public List<Pagamento> listarPagamentos() {
+        return pagamentoService.listarPagamentos();
+    }*/
 
     // Novo método para buscar pagamento por ID
     @GetMapping("/{id}")
