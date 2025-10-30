@@ -1,7 +1,11 @@
 // src/services/api.ts
 import { Pagamento, PaginatedResponse } from "@/types/pagamento";
 
-const API_BASE_URL = "http://localhost:8080/api";
+// Desenvolvimento local (sem Docker)
+// const API_BASE_URL = "http://localhost:8080/api";
+
+// Com Docker (usar esta)
+const API_BASE_URL = "/api";
 
 export interface PagamentoBackend {
   id: number;
