@@ -18,11 +18,17 @@ RUN npm run build
 # Stage 2: Runtime with Nginx
 FROM nginx:alpine
 
+# *** CORREÇÃO: Instala 'dos2unix' para corrigir quebra de linha ***
+RUN apk add --no-cache dos2unix
+
 # Copy built files to nginx
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# *** CORREÇÃO: Converte a quebra de linha para o formato Linux ***
+RUN dos2unix /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80

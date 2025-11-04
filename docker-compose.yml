@@ -8,8 +8,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: pixsave
-      POSTGRES_USER: pixsave_user
-      POSTGRES_PASSWORD: pixsave_pass
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
     ports:
       - "5432:5432"
     volumes:
@@ -17,7 +17,7 @@ services:
     networks:
       - pixsave-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pixsave_user -d pixsave"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pixsave"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -43,7 +43,7 @@ services:
   # Spring Boot Backend
   backend:
     build:
-      context: ./backend
+      context: ./Back-end
       dockerfile: Dockerfile
     container_name: pixsave-backend
     restart: unless-stopped
@@ -67,13 +67,13 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 10
       start_period: 40s
 
   # React Frontend
   frontend:
     build:
-      context: ./frontend
+      context: ./Front-end
       dockerfile: Dockerfile
     container_name: pixsave-frontend
     restart: unless-stopped
@@ -82,7 +82,8 @@ services:
     networks:
       - pixsave-network
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
