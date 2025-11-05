@@ -44,9 +44,8 @@ const Index = () => {
         bancos,
         categorias,
         metodosPagamento,
-      });
+      });      
       
-      toast.success("Transações carregadas com sucesso!");
     } catch (error) {
       toast.error("Erro ao carregar transações");
       console.error("Fetch error:", error);
@@ -143,7 +142,37 @@ const Index = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };    
+  };
+  
+  const handleUploadSuccess = async () => {
+    setIsLoading(true);
+
+    // Aguardar um pouco para garantir que o backend processou
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try{
+      const data = await pagamentoAPI.listarPagamentos();
+      setTransactions(data);
+
+      // Atualizar opções de filtro
+      const bancos = [...new Set(data.map(t => t.banco).filter(Boolean))] as string[];
+      const categorias = [...new Set(data.map(t => t.category))];
+      const metodosPagamento = [...new Set(data.map(t => t.paymentMethod))];
+
+      setFilterOptions({
+        bancos,
+        categorias,
+        metodosPagamento,
+      });
+
+      toast.success("Comprovante processado! Lista atualizada.");           
+    }catch (error){
+      toast.error("Erro ao atualizar lista");
+      console.error("Fetch error:", error);
+    }finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background p-8">
@@ -208,7 +237,7 @@ const Index = () => {
       <UploadModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onUploadSuccess={fetchTransactions}
+        onUploadSuccess={handleUploadSuccess}
       />
     </div>
   );

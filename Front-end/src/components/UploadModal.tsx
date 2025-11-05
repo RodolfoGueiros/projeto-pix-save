@@ -67,8 +67,11 @@ export const UploadModal = ({ open, onOpenChange, onUploadSuccess }: UploadModal
       setFile(null);
       onOpenChange(false);
       
-      // Recarregar lista de transações
-      onUploadSuccess();
+      // Aguardar um pouco e atualizar lista
+      setTimeout(() => {
+        onUploadSuccess();
+      }, 200);
+      
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Erro ao processar comprovante. Verifique o formato do arquivo.");
