@@ -1,3 +1,4 @@
+/*
 package com.rwtech.PixSave.configuration;
 
 import org.springframework.context.annotation.Configuration;
@@ -14,3 +15,4 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedHeaders("*");
     }
 }
+*/

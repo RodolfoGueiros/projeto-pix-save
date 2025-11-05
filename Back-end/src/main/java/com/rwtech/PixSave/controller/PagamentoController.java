@@ -37,7 +37,7 @@ public class PagamentoController {
         Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).descending());
         return pagamentoService.listarPagamentosPaginados(pageable);
         }
-    }
+
     /*public List<Pagamento> listarPagamentos() {
         return pagamentoService.listarPagamentos();
     }*/

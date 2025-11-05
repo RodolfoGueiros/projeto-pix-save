@@ -1,10 +1,6 @@
 // src/services/api.ts
 import { Pagamento, PaginatedResponse } from "@/types/pagamento";
 
-// Desenvolvimento local (sem Docker)
-// const API_BASE_URL = "http://localhost:8080/api";
-
-// Com Docker (usar esta)
 const API_BASE_URL = "/api";
 
 export interface PagamentoBackend {
@@ -16,6 +12,19 @@ export interface PagamentoBackend {
   hora: string; // formato: HH:mm:ss
 }
 
+interface PageResponse {
+  content: PagamentoBackend[];
+  pageable: {
+    pageNumber: number;
+    pageSize: number;
+  };
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
+  first: boolean;
+  empty: boolean;
+}
+
 // Função para converter dados do backend para o formato do frontend
 const mapPagamentoToFrontend = (pagamento: PagamentoBackend): Pagamento => {
   // Combinar data e hora
@@ -25,12 +34,12 @@ const mapPagamentoToFrontend = (pagamento: PagamentoBackend): Pagamento => {
   return {
     id: pagamento.id,
     transactionId: `TXN-${pagamento.id.toString().padStart(6, '0')}`,
-    category: "PIX", // Sempre PIX já que é comprovante PIX
+    category: "PIX",
     date: formattedDate,
     amount: pagamento.valor,
     paymentMethod: "PIX",
     status: "Completed",
-    balance: pagamento.valor, // Pode ajustar conforme necessidade
+    balance: pagamento.valor,
     banco: pagamento.nomeBanco,
     hasComprovante: true,
     comprovanteType: 'pdf'
@@ -38,14 +47,33 @@ const mapPagamentoToFrontend = (pagamento: PagamentoBackend): Pagamento => {
 };
 
 export const pagamentoAPI = {
-  // Listar todos os pagamentos
+  // Listar todos os pagamentos (agora retorna do Page.content)
   async listarPagamentos(): Promise<Pagamento[]> {
     const response = await fetch(`${API_BASE_URL}/pagamentos`);
     if (!response.ok) {
       throw new Error('Erro ao buscar pagamentos');
     }
-    const data: PagamentoBackend[] = await response.json();
-    return data.map(mapPagamentoToFrontend);
+    const data: PageResponse = await response.json();
+    
+    // Pegar apenas o content (array) da resposta paginada
+    return data.content.map(mapPagamentoToFrontend);
+  },
+
+  // Listar com paginação completa (se quiser usar futuramente)
+  async listarPagamentosPaginados(page: number = 0, size: number = 10): Promise<PaginatedResponse<Pagamento>> {
+    const response = await fetch(`${API_BASE_URL}/pagamentos?page=${page}&size=${size}`);
+    if (!response.ok) {
+      throw new Error('Erro ao buscar pagamentos');
+    }
+    const data: PageResponse = await response.json();
+    
+    return {
+      content: data.content.map(mapPagamentoToFrontend),
+      page: data.pageable.pageNumber,
+      size: data.pageable.pageSize,
+      totalElements: data.totalElements,
+      totalPages: data.totalPages
+    };
   },
 
   // Buscar pagamento por ID

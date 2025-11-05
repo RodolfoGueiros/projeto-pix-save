@@ -143,7 +143,7 @@ const Index = () => {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };
+  };    
 
   return (
     <div className="min-h-screen bg-background p-8">
